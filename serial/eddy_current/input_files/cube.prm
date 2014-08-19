@@ -3,7 +3,7 @@
 
 subsection Input Parameters
 
-  # Name of the mesh file (with extension)
+  # Name of the output file (without extension)
   set Mesh file = ../meshes/cubeincube.ucd
 
 end
@@ -12,7 +12,11 @@ end
 subsection Output Parameters
 
   # Name of the output file (without extension)
-  set Output file = solution
+  set Output filename = cube_solution
+  
+  # Output file extension
+  set Output filetype = vtk
+
 
 end
 

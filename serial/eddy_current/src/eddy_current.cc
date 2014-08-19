@@ -58,6 +58,7 @@ namespace Eddy_Current
         //        std::string parameter_filename;
         std::string mesh_filename;
         std::string output_filename;
+        std::string output_filetype;
     }
     
     //    template <int dim>
@@ -106,6 +107,10 @@ namespace Eddy_Current
     
     void ParameterReader::declare_parameters()
     {
+        // Declare subsections with:
+        //      prm.enter_subsection("subsection_name")
+        // declare entries within subsection with:
+        //       prm.declare("entry_name", "default_value", Pattern::type, "Description")
         prm.enter_subsection ("Input Parameters");
         {
             prm.declare_entry("Mesh file", "solution",
@@ -116,16 +121,17 @@ namespace Eddy_Current
         
         prm.enter_subsection ("Output Parameters");
         {
-            prm.declare_entry("Output file", "solution",
+            prm.declare_entry("Output filename", "solution",
                               Patterns::Anything(),
                               "Name of the output file (without extension)");
+            
+            prm.declare_entry("Output filetype", "vtk",
+                              Patterns::Anything(),
+                              "Output file extension");
 
         }
         prm.leave_subsection ();
-        // Declare subsections with:
-        //      prm.enter_subsection("subsection_name")
-        // declare entries within subsection with:
-        //       prm.declare("entry_name", "default_value", Pattern::type, "Description")
+
         
         prm.enter_subsection ("Material Parameters");
         {
@@ -244,6 +250,10 @@ namespace Eddy_Current
     
     void ParameterReader::copy_to_equation_data()
     {
+        
+        // Input data:
+        IO_Data::mesh_filename = prm.get("Mesh file");
+        
         EquationData::constant_epsilon0 = prm.get_double("background epsilon");
         EquationData::constant_mu0 = prm.get_double("background mur");
         EquationData::constant_sigma0 = prm.get_double("background sigma");
@@ -332,7 +342,7 @@ namespace Eddy_Current
     :
     Function<dim> (dim+dim),
     H0_re(dim),
-    H0_im(dim),
+    H0_im(dim)
 //    polarizationTensor_re(dim),
 //    polarizationTensor_im(dim)
     {
@@ -1183,7 +1193,7 @@ namespace Eddy_Current
     {
         
         std::ostringstream filename;
-        filename << "solution-" << cycle << ".vtk";
+        filename << IO_Data::output_filename << "-" << cycle << "." << IO_Data::output_filetype;
         std::ofstream output (filename.str().c_str());
         DataOut<dim> data_out;
         data_out.attach_dof_handler (dof_handler);
