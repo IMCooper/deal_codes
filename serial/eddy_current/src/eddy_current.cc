@@ -75,16 +75,16 @@ namespace Eddy_Current
         
         unsigned int pol_dim;
         
-        FullMatrix<double> polarizationTensor_re;
-        FullMatrix<double> polarizationTensor_im;
+        FullMatrix<double> polarizationTensor_re(3,3);
+        FullMatrix<double> polarizationTensor_im(3,3);
         
         unsigned int number_of_objects;
         
-        Vector<double> param_mur;
-        Vector<double> param_sigma;
-        Vector<double> param_epsilon;
-        Vector<double> param_kappa_re; // Kappa = Kappa_re + i*Kappa_im = -omega.^2*epr + i*omega*sigma
-        Vector<double> param_kappa_im;
+        Vector<double> param_mur(2);
+        Vector<double> param_sigma(2);
+        Vector<double> param_epsilon(2);
+        Vector<double> param_kappa_re(2); // Kappa = Kappa_re + i*Kappa_im = -omega.^2*epr + i*omega*sigma
+        Vector<double> param_kappa_im(2);
     }
     
     // Class for reading an input file (filetype, .prm):
@@ -94,15 +94,16 @@ namespace Eddy_Current
     public:
         ParameterReader(ParameterHandler &);
         void read_parameters(const std::string);
-        void copy_to_equation_data();
+        
     private:
         void declare_parameters();
+        void copy_to_equation_data();
         ParameterHandler &prm;
     };
     
     ParameterReader::ParameterReader(ParameterHandler &paramhandler)
     :
-    prm(paramhandler)
+    prm(paramhandler)    
     {}
     
     void ParameterReader::declare_parameters()
@@ -111,11 +112,13 @@ namespace Eddy_Current
         //      prm.enter_subsection("subsection_name")
         // declare entries within subsection with:
         //       prm.declare("entry_name", "default_value", Pattern::type, "Description")
+        
         prm.enter_subsection ("Input Parameters");
         {
-            prm.declare_entry("Mesh file", "solution",
+            prm.declare_entry("Mesh file", "mesh.ucd",
                               Patterns::Anything(),
                               "Name of the mesh file (with extension)");
+            
         }
         prm.leave_subsection ();
         
@@ -168,6 +171,9 @@ namespace Eddy_Current
         prm.leave_subsection ();
         prm.enter_subsection ("Polarization Tensor");
         {
+            prm.declare_entry("dimension", "3",
+                              Patterns::Integer(1),
+                              "Dimension of the Polarization Tensor");
             /*
              To use once it is clear how to handle Patterns::List().
              */
@@ -185,64 +191,64 @@ namespace Eddy_Current
              */
             // Real:
             prm.declare_entry("Pol_re11", "1.0",
-                              Patterns::Double(0),
+                              Patterns::Double(),
                               "Polarization Tensor entry 11, real part");
             prm.declare_entry("Pol_re12", "0.0",
-                              Patterns::Double(0),
+                              Patterns::Double(),
                               "Polarization Tensor entry 12, real part");
             prm.declare_entry("Pol_re13", "0.0",
-                              Patterns::Double(0),
+                              Patterns::Double(),
                               "Polarization Tensor entry 13, real part");
             
             prm.declare_entry("Pol_re21", "0.0",
-                              Patterns::Double(0),
+                              Patterns::Double(),
                               "Polarization Tensor entry 21, real part");
             prm.declare_entry("Pol_re22", "1.0",
-                              Patterns::Double(0),
+                              Patterns::Double(),
                               "Polarization Tensor entry 22, real part");
             prm.declare_entry("Pol_re23", "0.0",
-                              Patterns::Double(0),
+                              Patterns::Double(),
                               "Polarization Tensor entry 13, real part");
             
             prm.declare_entry("Pol_re31", "0.0",
-                              Patterns::Double(0),
+                              Patterns::Double(),
                               "Polarization Tensor entry 31, real part");
             prm.declare_entry("Pol_re32", "0.0",
-                              Patterns::Double(0),
+                              Patterns::Double(),
                               "Polarization Tensor entry 32, real part");
             prm.declare_entry("Pol_re33", "1.0",
-                              Patterns::Double(0),
+                              Patterns::Double(),
                               "Polarization Tensor entry 33, real part");
             
             // Imaginary:
             prm.declare_entry("Pol_im11", "1.0",
-                              Patterns::Double(0),
+                              Patterns::Double(),
                               "Polarization Tensor entry 11, imaginary part");
             prm.declare_entry("Pol_im12", "0.0",
-                              Patterns::Double(0),
+                              Patterns::Double(),
                               "Polarization Tensor entry 12, imaginary part");
             prm.declare_entry("Pol_im13", "0.0",
-                              Patterns::Double(0),
+                              Patterns::Double(),
                               "Polarization Tensor entry 13, imaginary part");
             
-            prm.declare_entry("Pol_im12", "0.0",
-                              Patterns::Double(0),
-                              "Polarization Tensor entry 12, imaginary part");
+            prm.declare_entry("Pol_im21", "0.0",
+                              Patterns::Double(),
+                              "Polarization Tensor entry 21, imaginary part");
             prm.declare_entry("Pol_im22", "1.0",
-                              Patterns::Double(0),
+                              Patterns::Double(),
                               "Polarization Tensor entry 22, imaginary part");
             prm.declare_entry("Pol_im23", "0.0",
-                              Patterns::Double(0),
+                              Patterns::Double(),
                               "Polarization Tensor entry 23, imaginary part");
             
             prm.declare_entry("Pol_im31", "0.0",
-                              Patterns::Double(0),
+                              Patterns::Double(),
                               "Polarization Tensor entry 31, imaginary part");
             prm.declare_entry("Pol_im32", "0.0",
-                              Patterns::Double(0),
+                              Patterns::Double(),
                               "Polarization Tensor entry 32, imaginary part");
             prm.declare_entry("Pol_im33", "1.0",
-                              Patterns::Double(0),
+                              Patterns::Double(),
                               "Polarization Tensor entry 33, imaginary part");
         }
         prm.leave_subsection ();
@@ -252,7 +258,22 @@ namespace Eddy_Current
     {
         
         // Input data:
+        prm.enter_subsection("Input Parameters");
+        
         IO_Data::mesh_filename = prm.get("Mesh file");
+        
+        prm.leave_subsection();
+        
+        // Output data:
+        prm.enter_subsection("Output Parameters");
+        
+        IO_Data::output_filename = prm.get("Output filename");
+        IO_Data::output_filetype = prm.get("Output filetype");
+        
+        prm.leave_subsection();
+        
+        // Material parameters:
+        prm.enter_subsection("Material Parameters");
         
         EquationData::constant_epsilon0 = prm.get_double("background epsilon");
         EquationData::constant_mu0 = prm.get_double("background mur");
@@ -264,6 +285,14 @@ namespace Eddy_Current
         EquationData::param_mu_star = prm.get_double("object mur");
         EquationData::param_sigma_star = prm.get_double("object sigma");
         
+        prm.leave_subsection();
+        
+        
+        // Polarization Tensor:
+        
+        prm.enter_subsection("Polarization Tensor");
+        
+        EquationData::pol_dim = prm.get_integer("dimension");
         // Not sure how to access these from the list - there's no function get_list ??
         //        EquationData::polarizationTensor_re = ;
         //        EquationData::polarizationTensor_im = ;
@@ -295,6 +324,7 @@ namespace Eddy_Current
         EquationData::polarizationTensor_im(2,1)=prm.get_double("Pol_im32");
         EquationData::polarizationTensor_im(2,2)=prm.get_double("Pol_im33");
     
+        prm.leave_subsection();
         
     }
     
@@ -1266,9 +1296,9 @@ int main (int argc, char* argv[])
 {
     using namespace Eddy_Current;
     
-    ParameterHandler prm;
-    ParameterReader param(prm);
-    std::string parameter_filename = "eddy_current.prm";
+    ParameterHandler prm123;
+    ParameterReader param(prm123);
+    std::string parameter_filename = "../input_files/cube.prm";
     
     unsigned int p_order=0;
     if (argc > 0)

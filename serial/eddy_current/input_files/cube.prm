@@ -4,7 +4,7 @@
 subsection Input Parameters
 
   # Name of the output file (without extension)
-  set Mesh file = ../meshes/cubeincube.ucd
+  set Mesh file = ../meshes/cube_in_cube2.ucd
 
 end
 
@@ -48,6 +48,9 @@ end
 
 
 subsection Polarization Tensor
+
+  # Dimension of the Polarization Tensor
+  set dimension = 3
 
   # Polarization Tensor entry 11, real part
   set Pol_re11 = 4.27201219431425421E-007
@@ -102,4 +105,5 @@ subsection Polarization Tensor
 
   # Polarization Tensor entry 33, imaginary part
   set Pol_im33 = -5.69642734496220397E-008
+
 end
