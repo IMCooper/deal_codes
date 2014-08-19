@@ -1,0 +1,34 @@
+Dirichlet:
+./wave_propagation -p 0
+cycle cells dofs    L2 Error    H(curl) Error  
+    0     8  108 1.15904018e-01 1.24176508e-01 
+    1    64  600 5.77896943e-02 6.19578648e-02 
+    2   512 3888 2.88743606e-02 3.09624645e-02 
+./wave_propagation -p 1
+cycle cells dofs     L2 Error    H(curl) Error  
+    0     8   600 8.35079734e-01 2.59980668e+00 
+    1    64  3888 7.93792725e-01 3.36290438e+00 
+    2   512 27744 7.77603612e-01 4.42928910e+00 
+./wave_propagation -p 2
+cycle cells dofs     L2 Error    H(curl) Error  
+    0     8  1764 8.20717491e-01 2.50234579e+00 
+    1    64 12168 7.87196814e-01 3.17447088e+00 
+    2   512 90000 7.74601489e-01 4.11893779e+00 
+
+Neumann:
+./wave_propagation -p 0
+    0     8  108 1.15471804e-01 1.23771671e-01 
+    1    64  600 5.77352583e-02 6.19069021e-02 
+    2   512 3888 2.88675425e-02 3.09560822e-02 
+./wave_propagation -p 1
+cycle cells dofs     L2 Error    H(curl) Error  
+    0     8   600 2.58268149e-03 2.79282760e-03 
+    1    64  3888 6.45549584e-04 6.98219104e-04 
+    2   512 27744 1.61377755e-04 1.74553607e-04 
+./wave_propagation -p 2
+cycle cells dofs     L2 Error    H(curl) Error  
+    0     8  1764 4.17828432e-05 4.53286783e-05 
+    1    64 12168 5.22313050e-06 5.66700077e-06 
+    2   512 90000 6.52897524e-07 7.08401532e-07 
+
+
