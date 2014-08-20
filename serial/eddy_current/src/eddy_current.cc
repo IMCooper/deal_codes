@@ -263,7 +263,6 @@ namespace Eddy_Current
         // Also assumes the separator is a comma - could be extended to handle any.
         std::stringstream wholeline(prm.get(entry));
         std::string val;
-        double temp;
         for (unsigned int i=0;i<matrix_size;i++)
         {
             for (unsigned int j=0;j<matrix_size;j++)
@@ -1336,8 +1335,8 @@ int main (int argc, char* argv[])
 {
     using namespace Eddy_Current;
     
-    ParameterHandler prm123;
-    ParameterReader param(prm123);
+    ParameterHandler prm;
+    ParameterReader param(prm);
     std::string parameter_filename = "../input_files/cube.prm";
     
     unsigned int p_order=0;
