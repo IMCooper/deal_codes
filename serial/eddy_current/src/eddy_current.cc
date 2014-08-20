@@ -98,6 +98,7 @@ namespace Eddy_Current
     private:
         void declare_parameters();
         void copy_to_equation_data();
+        void get_matrix_from_list(std::string entry, FullMatrix<double> &matrix_out, unsigned int matrix_size);
         ParameterHandler &prm;
     };
     
@@ -177,15 +178,16 @@ namespace Eddy_Current
             /*
              To use once it is clear how to handle Patterns::List().
              */
-            /*
-            prm.declare_entry("Real Polarization Tensor", "0.0",
+            
+            prm.declare_entry("Real Polarization Tensor",
+                              "1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0",
                               Patterns::List(Patterns::Double(),9,9,","),
                               "Real part of Polarization Tensor");
             
-            prm.declare_entry("Imaginary Polarization Tensor", "0.0",
+            prm.declare_entry("Imaginary Polarization Tensor",
+                              "1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0",
                               Patterns::List(Patterns::Double(),9,9,","),
                               "Imaginary part of Polarization Tensor");
-            */
             
             /* Line by line input:
              */
@@ -254,6 +256,26 @@ namespace Eddy_Current
         prm.leave_subsection ();
     }
     
+    void ParameterReader::get_matrix_from_list(std::string entry, FullMatrix<double> &matrix_out, unsigned int matrix_size)
+    {
+        // Outputs a matrix read in by ParameterHandler as a List (Patterns::List(Patterns::Double())
+        // Assumes a square matrix but could be extended to handle non-square.
+        // Also assumes the separator is a comma - could be extended to handle any.
+        std::stringstream wholeline(prm.get(entry));
+        std::string val;
+        double temp;
+        for (unsigned int i=0;i<matrix_size;i++)
+        {
+            for (unsigned int j=0;j<matrix_size;j++)
+            {
+                std::getline(wholeline, val, ',');
+                std::stringstream converter(val);
+                converter >> matrix_out(i,j);               
+            }
+        }
+    }
+    
+    
     void ParameterReader::copy_to_equation_data()
     {
         
@@ -296,33 +318,51 @@ namespace Eddy_Current
         // Not sure how to access these from the list - there's no function get_list ??
         //        EquationData::polarizationTensor_re = ;
         //        EquationData::polarizationTensor_im = ;
+        // Work around here:
+        get_matrix_from_list("Real Polarization Tensor", EquationData::polarizationTensor_re,3);
+        get_matrix_from_list("Imaginary Polarization Tensor", EquationData::polarizationTensor_im,3);
         
+        // Check correct:
+        std::cout << " pol tensors " << std::endl;
+        for (unsigned int i=0;i<3;i++)
+        {
+            for (unsigned int j=0;j<3;j++)
+            {
+                std::cout << EquationData::polarizationTensor_re(i,j) << " ";
+            }
+            std::cout << "   ";
+            for (unsigned int j=0;j<3;j++)
+            {
+                std::cout << EquationData::polarizationTensor_im(i,j) << " ";
+            }
+            std::cout << std::endl;
+        }             
         // Line by line version:
         // Real:
-        EquationData::polarizationTensor_re(0,0)=prm.get_double("Pol_re11");
-        EquationData::polarizationTensor_re(0,1)=prm.get_double("Pol_re12");
-        EquationData::polarizationTensor_re(0,2)=prm.get_double("Pol_re13");
-        
-        EquationData::polarizationTensor_re(1,0)=prm.get_double("Pol_re21");
-        EquationData::polarizationTensor_re(1,1)=prm.get_double("Pol_re22");
-        EquationData::polarizationTensor_re(1,2)=prm.get_double("Pol_re23");
-        
-        EquationData::polarizationTensor_re(2,0)=prm.get_double("Pol_re31");
-        EquationData::polarizationTensor_re(2,1)=prm.get_double("Pol_re32");
-        EquationData::polarizationTensor_re(2,2)=prm.get_double("Pol_re33");
-        
-        // Imaginary:
-        EquationData::polarizationTensor_im(0,0)=prm.get_double("Pol_im11");
-        EquationData::polarizationTensor_im(0,1)=prm.get_double("Pol_im12");
-        EquationData::polarizationTensor_im(0,2)=prm.get_double("Pol_im13");
-        
-        EquationData::polarizationTensor_im(1,0)=prm.get_double("Pol_im21");
-        EquationData::polarizationTensor_im(1,1)=prm.get_double("Pol_im22");
-        EquationData::polarizationTensor_im(1,2)=prm.get_double("Pol_im23");
-        
-        EquationData::polarizationTensor_im(2,0)=prm.get_double("Pol_im31");
-        EquationData::polarizationTensor_im(2,1)=prm.get_double("Pol_im32");
-        EquationData::polarizationTensor_im(2,2)=prm.get_double("Pol_im33");
+//         EquationData::polarizationTensor_re(0,0)=prm.get_double("Pol_re11");
+//         EquationData::polarizationTensor_re(0,1)=prm.get_double("Pol_re12");
+//         EquationData::polarizationTensor_re(0,2)=prm.get_double("Pol_re13");
+//         
+//         EquationData::polarizationTensor_re(1,0)=prm.get_double("Pol_re21");
+//         EquationData::polarizationTensor_re(1,1)=prm.get_double("Pol_re22");
+//         EquationData::polarizationTensor_re(1,2)=prm.get_double("Pol_re23");
+//         
+//         EquationData::polarizationTensor_re(2,0)=prm.get_double("Pol_re31");
+//         EquationData::polarizationTensor_re(2,1)=prm.get_double("Pol_re32");
+//         EquationData::polarizationTensor_re(2,2)=prm.get_double("Pol_re33");
+//         
+//         // Imaginary:
+//         EquationData::polarizationTensor_im(0,0)=prm.get_double("Pol_im11");
+//         EquationData::polarizationTensor_im(0,1)=prm.get_double("Pol_im12");
+//         EquationData::polarizationTensor_im(0,2)=prm.get_double("Pol_im13");
+//         
+//         EquationData::polarizationTensor_im(1,0)=prm.get_double("Pol_im21");
+//         EquationData::polarizationTensor_im(1,1)=prm.get_double("Pol_im22");
+//         EquationData::polarizationTensor_im(1,2)=prm.get_double("Pol_im23");
+//         
+//         EquationData::polarizationTensor_im(2,0)=prm.get_double("Pol_im31");
+//         EquationData::polarizationTensor_im(2,1)=prm.get_double("Pol_im32");
+//         EquationData::polarizationTensor_im(2,2)=prm.get_double("Pol_im33");
     
         prm.leave_subsection();
         
