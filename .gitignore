@@ -4,6 +4,8 @@
 
 # misc wildcards:
 *.*~
+*.swp
+*.kate-swp
 
 # CMake and makefiles (leaves CMakeLists.txt)
 CMakeCache.txt
