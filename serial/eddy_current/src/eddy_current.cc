@@ -77,7 +77,15 @@ namespace Eddy_Current
         
         FullMatrix<double> polarizationTensor_re(3,3);
         FullMatrix<double> polarizationTensor_im(3,3);
+        Vector<double> H0_re(3);
+        Vector<double> H0_im(3);
         
+        
+        /* Vectors holding equation parameters
+         * intially assume 2 different objects.
+         * This can be adjusted via the parameter file and then
+         * use vector.reinit(number_of objects) later on.
+         */
         unsigned int number_of_objects;
         
         Vector<double> param_mur(2);
@@ -99,6 +107,7 @@ namespace Eddy_Current
         void declare_parameters();
         void copy_to_equation_data();
         void get_matrix_from_list(std::string entry, FullMatrix<double> &matrix_out, unsigned int matrix_size);
+        void get_vector_from_list(std::string entry, Vector<double> &vector_out, unsigned int vector_length);
         ParameterHandler &prm;
     };
     
@@ -175,18 +184,26 @@ namespace Eddy_Current
             prm.declare_entry("dimension", "3",
                               Patterns::Integer(1),
                               "Dimension of the Polarization Tensor");
-            /*
-             To use once it is clear how to handle Patterns::List().
-             */
             
+            /* Background field */
+            prm.declare_entry("real background","0.0, 0.0, 0.0",
+                              Patterns::List(Patterns::Double(),3,3,","),
+                              "Background field, real part");
+            
+            prm.declare_entry("imaginary background","0.0, 0.0, 0.0",
+                              Patterns::List(Patterns::Double(),3,3,","),
+                              "Background field, real part");
+
+            //Polarization tensor:
+            /* Read in via list: */
             prm.declare_entry("Real Polarization Tensor",
-                              "1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0",
-                              Patterns::List(Patterns::Double(),9,9,","),
+                              "1.0, 0.0, 0.0; 0.0, 1.0, 0.0; 0.0, 0.0, 1.0",
+                              Patterns::List(Patterns::List(Patterns::Double(),3,3,","),3,3,";"),
                               "Real part of Polarization Tensor");
             
             prm.declare_entry("Imaginary Polarization Tensor",
-                              "1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0",
-                              Patterns::List(Patterns::Double(),9,9,","),
+                              "1.0, 0.0, 0.0; 0.0, 1.0, 0.0; 0.0, 0.0, 1.0",
+                              Patterns::List(Patterns::List(Patterns::Double(),3,3,","),3,3,";"),
                               "Imaginary part of Polarization Tensor");
             
             /* Line by line input:
@@ -258,19 +275,42 @@ namespace Eddy_Current
     
     void ParameterReader::get_matrix_from_list(std::string entry, FullMatrix<double> &matrix_out, unsigned int matrix_size)
     {
-        // Outputs a matrix read in by ParameterHandler as a List (Patterns::List(Patterns::Double())
-        // Assumes a square matrix but could be extended to handle non-square.
-        // Also assumes the separator is a comma - could be extended to handle any.
+        /* Outputs a matrix read in by ParameterHandler as a List (Patterns::List(Patterns::Double())
+         * - Assumes a square matrix but could be extended to handle non-square.
+         * - Also assumes the separator is a comma - could be extended to handle any.
+         * 
+         * Requires that the matrix is entered using ; to signal a new row
+         * and , to signal a new column
+         */
+        
         std::stringstream wholeline(prm.get(entry));
+        std::string rowStr;
         std::string val;
         for (unsigned int i=0;i<matrix_size;i++)
         {
+            std::getline(wholeline,rowStr,';');
+            std::stringstream row(rowStr);
             for (unsigned int j=0;j<matrix_size;j++)
             {
-                std::getline(wholeline, val, ',');
+                std::getline(row, val, ',');
                 std::stringstream converter(val);
                 converter >> matrix_out(i,j);               
             }
+        }
+    }
+    
+    void ParameterReader::get_vector_from_list(std::string entry, Vector<double> &vector_out, unsigned int vector_length)
+    {
+        /* Outputs a vector read in by ParameterHandler as a List (Patterns::List(Patterns::Double())
+         */
+        
+        std::stringstream wholeline(prm.get(entry));
+        std::string val;
+        for (unsigned int i=0;i<vector_length;i++)
+        {
+            std::getline(wholeline,val,',');
+            std::stringstream converter(val);
+            converter >> vector_out(i);
         }
     }
     
@@ -314,6 +354,10 @@ namespace Eddy_Current
         prm.enter_subsection("Polarization Tensor");
         
         EquationData::pol_dim = prm.get_integer("dimension");
+        
+        get_vector_from_list("real background", EquationData::H0_re,3);
+        get_vector_from_list("imaginary background", EquationData::H0_im,3);
+        
         // Not sure how to access these from the list - there's no function get_list ??
         //        EquationData::polarizationTensor_re = ;
         //        EquationData::polarizationTensor_im = ;
@@ -322,6 +366,13 @@ namespace Eddy_Current
         get_matrix_from_list("Imaginary Polarization Tensor", EquationData::polarizationTensor_im,3);
         
         // Check correct:
+        std::cout << " background field " << std::endl;
+        for (unsigned int i=0;i<3;i++)
+        {
+            std::cout << EquationData::H0_re(i) << "   " << EquationData::H0_im(i) << std::endl;
+        }
+        std::cout << std::endl;
+        
         std::cout << " pol tensors " << std::endl;
         for (unsigned int i=0;i<3;i++)
         {
@@ -395,8 +446,7 @@ namespace Eddy_Current
                                         std::vector<Vector<double> >   &values) const;
         Point<dim> centre_of_sphere;
         double sphere_radius;
-        Vector<double> H0_re;
-        Vector<double> H0_im;
+
     private:
         // To remove:
 //        FullMatrix<double> polarizationTensor_re;
@@ -409,9 +459,9 @@ namespace Eddy_Current
     template<int dim>
     EddyCurrent<dim>::EddyCurrent()
     :
-    Function<dim> (dim+dim),
-    H0_re(dim),
-    H0_im(dim)
+    Function<dim> (dim+dim)
+//     H0_re(dim),
+//     H0_im(dim)
 //    polarizationTensor_re(dim),
 //    polarizationTensor_im(dim)
     {
@@ -444,13 +494,13 @@ namespace Eddy_Current
         
         //Define background field, H0:
         //real:
-        H0_re(0) = 0.0;
-        H0_re(1) = 0.0;
-        H0_re(2) = 1.0;
-        //imaginary:
-        H0_im(0) = 0.0;
-        H0_im(1) = 0.0;
-        H0_im(2) = 0.0;
+//         H0_re(0) = 0.0;
+//         H0_re(1) = 0.0;
+//         H0_re(2) = 1.0;
+//         //imaginary:
+//         H0_im(0) = 0.0;
+//         H0_im(1) = 0.0;
+//         H0_im(2) = 0.0;
         
         // To be added to eqn data namespace (or other namespace.. geometry??)
         centre_of_sphere = Point<dim>(0.0, 0.0, 0.0);
@@ -501,21 +551,21 @@ namespace Eddy_Current
         D2G.add(3.0,rhat,-1.0,eye);
         D2G*=1.0/(4.0*constant_PI*rad*rad*rad);
         
-        D2G.vmult(w_temp_re, H0_re);
-        D2G.vmult(w_temp_im, H0_im);
+        D2G.vmult(w_temp_re, EquationData::H0_re);
+        D2G.vmult(w_temp_im, EquationData::H0_im);
         if (component < dim)
         {
             EquationData::polarizationTensor_re.vmult(v_temp,w_temp_re);
             w_temp_im *= -1.0;
             EquationData::polarizationTensor_im.vmult_add(v_temp,w_temp_im);
             
-            val = v_temp(component) + H0_re(component);
+            val = v_temp(component) + EquationData::H0_re(component);
         }
         else
         {
             EquationData::polarizationTensor_re.vmult(v_temp,w_temp_im);
             EquationData::polarizationTensor_im.vmult(v_temp,w_temp_re);
-            val = -( v_temp(component - dim) + H0_im(component-dim) ); // minus as the solution is the complex conjugate of what we need.
+            val = -( v_temp(component - dim) + EquationData::H0_im(component-dim) ); // minus as the solution is the complex conjugate of what we need.
         }
         return val;
     }
@@ -545,8 +595,8 @@ namespace Eddy_Current
         D2G.add(3.0,rhat,-1.0,eye);
         D2G*=1.0/(4.0*constant_PI*rad*rad*rad);
         
-        D2G.vmult(w_temp_re, H0_re);
-        D2G.vmult(w_temp_im, H0_im);
+        D2G.vmult(w_temp_re, EquationData::H0_re);
+        D2G.vmult(w_temp_im, EquationData::H0_im);
         EquationData::polarizationTensor_re.vmult(v_temp_re, w_temp_re);
         EquationData::polarizationTensor_re.vmult(v_temp_im, w_temp_im);
         
@@ -555,8 +605,8 @@ namespace Eddy_Current
         EquationData::polarizationTensor_im.vmult_add(v_temp_im, w_temp_re);
         for (unsigned int i=0;i<dim;i++)
         {
-            values(i)=v_temp_re(i) + H0_re(i);
-            values(i+dim)= - ( v_temp_im(i) + H0_im(i) );// minus as the solution is the complex conjugate of what we need.
+            values(i)=v_temp_re(i) + EquationData::H0_re(i);
+            values(i+dim)= - ( v_temp_im(i) + EquationData::H0_im(i) );// minus as the solution is the complex conjugate of what we need.
         }
     }
     
@@ -591,8 +641,8 @@ namespace Eddy_Current
             D2G.add(3.0,rhat,-1.0,eye);
             D2G*=1.0/(4.0*constant_PI*rad*rad*rad);
             
-            D2G.vmult(w_temp_re, H0_re);
-            D2G.vmult(w_temp_im, H0_im);
+            D2G.vmult(w_temp_re, EquationData::H0_re);
+            D2G.vmult(w_temp_im, EquationData::H0_im);
             
             if (component < dim)
             {
@@ -600,14 +650,14 @@ namespace Eddy_Current
                 w_temp_im *= -1.0;;
                 EquationData::polarizationTensor_im.vmult_add(v_temp_re, w_temp_im);
                 
-                values[k] = v_temp_re(component) + H0_re(component);
+                values[k] = v_temp_re(component) + EquationData::H0_re(component);
             }
             else
             {
                 EquationData::polarizationTensor_im.vmult(v_temp_im, w_temp_re);
                 EquationData::polarizationTensor_re.vmult(v_temp_im, w_temp_im);
                 
-                values[k] = -( v_temp_im(component-dim) + H0_im(component - dim) ); // minus as the solution is the complex conjugate of what we need.
+                values[k] = -( v_temp_im(component-dim) + EquationData::H0_im(component - dim) ); // minus as the solution is the complex conjugate of what we need.
             }
         }
     }
@@ -655,8 +705,8 @@ namespace Eddy_Current
                 D2G=0;
             }
             
-            D2G.vmult(w_temp_re, H0_re);
-            D2G.vmult(w_temp_im, H0_im);
+            D2G.vmult(w_temp_re, EquationData::H0_re);
+            D2G.vmult(w_temp_im, EquationData::H0_im);
             EquationData::polarizationTensor_re.vmult(v_temp_re, w_temp_re);
             EquationData::polarizationTensor_re.vmult(v_temp_im, w_temp_im);
             
@@ -666,9 +716,9 @@ namespace Eddy_Current
             for (unsigned int i=0;i<dim;i++)
             {
                 // Real
-                value_list[k](i)=v_temp_re(i) + H0_re(i);
+                value_list[k](i)=v_temp_re(i) + EquationData::H0_re(i);
                 // Imaginary
-                value_list[k](i+dim)= -( v_temp_im(i) + H0_im(i) ); // minus as the solution is the complex conjugate of what we need.
+                value_list[k](i+dim)= -( v_temp_im(i) + EquationData::H0_im(i) ); // minus as the solution is the complex conjugate of what we need.
             }
         }
     }
@@ -1178,6 +1228,13 @@ namespace Eddy_Current
         solution_names.push_back ("H_im");
         solution_names.push_back ("H_im");
         
+        solution_names.push_back ("perturbed_diff_re");
+        solution_names.push_back ("perturbed_diff_re");
+        solution_names.push_back ("perturbed_diff_re");
+        solution_names.push_back ("perturbed_diff_im");
+        solution_names.push_back ("perturbed_diff_im");
+        solution_names.push_back ("perturbed_diff_im");
+        
         return solution_names;
     }
     template <int dim>
@@ -1198,6 +1255,15 @@ namespace Eddy_Current
         interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
         interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
         interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
+        
+        // For perturbed field error:
+        interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
+        interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
+        interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
+        interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
+        interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
+        interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
+        
         return interpretation;
     }
     template <int dim>
@@ -1222,6 +1288,20 @@ namespace Eddy_Current
         
         double temp_scaling = 1.0;
         
+        std::vector<Vector<double> > neumann_value_list(n_quadrature_points, Vector<double>(dim+dim));
+        MaxwellProblem::exact_solution.vector_value_list(evaluation_points, neumann_value_list);
+        
+        std::vector<Vector<double> > perturbed_field(n_quadrature_points, Vector<double>(dim+dim));
+        
+        for (unsigned int q=0;q<n_quadrature_points;q++)
+        {
+            for (unsigned int i=0;i<dim;i++)
+            {
+                perturbed_field[q](i) = neumann_value_list[q](i) - EquationData::H0_re(i);
+                perturbed_field[q](i+dim) = neumann_value_list[q](i+dim) - EquationData::H0_im(i);
+            }    
+        }
+        
         for (unsigned int q=0; q<n_quadrature_points; ++q)
         {
             // Electric field, E:
@@ -1230,6 +1310,13 @@ namespace Eddy_Current
                 computed_quantities[q](d) = uh[q](d);
                 computed_quantities[q](d+dim) = uh[q](d+dim);
             }
+            
+            // This part is wrong for anything but a sphere.
+            // Need to base it on points inside or outside of material 1/2.
+            // not sure how to do this at the moment.
+            // For now, we're interested in the field outside the object, so use that:
+            temp_scaling = EquationData::param_omega/(EquationData::param_mur(0)*EquationData::constant_mu0);
+            /*
             double rad = centre_of_sphere.distance(evaluation_points[q]);
             if (rad <= sphere_radius)
             {
@@ -1237,9 +1324,9 @@ namespace Eddy_Current
             }
             else
             {
-                temp_scaling = EquationData::param_omega/(EquationData::param_mur(0)*EquationData::constant_mu0);
-                
+                temp_scaling = EquationData::param_omega/(EquationData::param_mur(0)*EquationData::constant_mu0);                
             }
+            */
             
             // Magnetic field, H = i*omega*curl(E).
             // i.e. flip the real/imag parts of curl(E) and multiply imaginary part by -1.
@@ -1252,6 +1339,14 @@ namespace Eddy_Current
             computed_quantities[q](0+3*dim) = (duh[q][2][1]-duh[q][1][2])*temp_scaling;
             computed_quantities[q](1+3*dim) = (duh[q][0][2]-duh[q][2][0])*temp_scaling;
             computed_quantities[q](2+3*dim) = (duh[q][1][0]-duh[q][0][1])*temp_scaling;
+            
+            computed_quantities[q](0+4*dim) = perturbed_field[q](0) - (computed_quantities[q](0+2*dim) - EquationData::H0_re(0));
+            computed_quantities[q](1+4*dim) = perturbed_field[q](1) - (computed_quantities[q](1+2*dim) - EquationData::H0_re(1));
+            computed_quantities[q](2+4*dim) = perturbed_field[q](2) - (computed_quantities[q](2+2*dim) - EquationData::H0_re(2));
+            
+            computed_quantities[q](0+5*dim) = perturbed_field[q](3) - (computed_quantities[q](0+3*dim) - EquationData::H0_im(0));
+            computed_quantities[q](1+5*dim) = perturbed_field[q](4) - (computed_quantities[q](1+3*dim) - EquationData::H0_im(1));
+            computed_quantities[q](2+5*dim) = perturbed_field[q](5) - (computed_quantities[q](2+3*dim) - EquationData::H0_im(2));
             
         }
     }
