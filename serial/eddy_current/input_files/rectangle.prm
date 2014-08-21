@@ -1,0 +1,67 @@
+# Listing of Parameters
+# ---------------------
+
+subsection Input Parameters
+
+  # Name of the output file (without extension)
+  set Mesh file = ../meshes/rectangle_in_cube.ucd
+
+end
+
+
+subsection Output Parameters
+
+  # Name of the output file (without extension)
+  set Output filename = rectangle_solution
+  
+  # Output file extension
+  set Output filetype = vtk
+
+
+end
+
+
+subsection Material Parameters
+
+  # Angular frequency
+  set omega = 133.5
+
+  # Background permittivity
+  set background epsilon = 0.0
+
+  # Background (relative) permeability
+  set background mur = 1.0
+
+  # Background conductivity
+  set background sigma = 1e-1
+
+  # Object permittivity
+  set object epsilon = 0.0
+
+  # Object (relative) permability
+  set object mur = 1.5
+
+  # Object conductivity
+  set object sigma = 5.95e7
+
+end
+
+
+subsection Polarization Tensor
+
+  # Dimension of the Polarization Tensor
+  set dimension = 3
+  
+  # Background field, real part
+  set real background = 0.0, 0.0, 1.0
+  
+  # Background field, imaginary part
+  set imaginary background = 0.0, 0.0, 0.0
+
+  # Real part of Polarization Tensor
+  set Real Polarization Tensor = 4.5816262150156770E-007,   4.4938723958887685E-012,  -5.5300368150447282E-012; 2.4976759702085555E-012,   5.0613761182859534E-007,  -1.8259142780692709E-012; -5.1500432105564091E-012,  -3.5461402484861216E-012,   4.8096125144423032E-007
+  
+  # Imaginary part of Polarization Tensor
+  set Imaginary Polarization Tensor = -8.0489182732815013E-008,   3.3805381243186634E-013,  -1.7188188126269210E-012;   3.8331080746901908E-013,  -5.1673671958426165E-008,  -8.4585458426021778E-013;  -1.7396102951823297E-012,  -8.2074640276249785E-013,  -5.8640594791416981E-008
+
+end
