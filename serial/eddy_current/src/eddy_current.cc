@@ -697,11 +697,11 @@ namespace Eddy_Current
             }
             else
             {
-                for (unsigned int i=0; i<dim;i++)
-                {
-                    std::cout << p(i) << " ";
-                }
-                std::cout << std::endl;
+//                for (unsigned int i=0; i<dim;i++)
+//                {
+//                    std::cout << p(i) << " ";
+//                }
+//                std::cout << std::endl;
                 D2G=0;
             }
             
@@ -735,7 +735,7 @@ namespace Eddy_Current
         
         Point<dim> centre_of_sphere;
         double sphere_radius;
-        
+       
     private:
         double dotprod(const Tensor<1,dim> &A, const Tensor<1,dim> &B) const;
         double dotprod(const Tensor<1,dim> &A, const Vector<double> &B) const;
@@ -762,7 +762,7 @@ namespace Eddy_Current
         ConvergenceTable	   convergence_table;
         
         // Choose exact solution - used for BCs and error calculation
-        const EddyCurrent<dim> exact_solution;
+        EddyCurrent<dim> exact_solution;
         
         // Input paramters (for hp-FE)
         unsigned int p_order;
@@ -1159,6 +1159,7 @@ namespace Eddy_Current
     private:
         Point<dim> centre_of_sphere;
         double sphere_radius = 0.1;
+        EddyCurrent<dim> exact_solution;
         
         /* Now handled through param handler copied into Equation data. Remove once tested:
          // Constants, MUST REPLACE WITH EQNDATA LATER:
@@ -1289,7 +1290,7 @@ namespace Eddy_Current
         double temp_scaling = 1.0;
         
         std::vector<Vector<double> > neumann_value_list(n_quadrature_points, Vector<double>(dim+dim));
-        MaxwellProblem::exact_solution.vector_value_list(evaluation_points, neumann_value_list);
+        exact_solution.vector_value_list(evaluation_points, neumann_value_list);
         
         std::vector<Vector<double> > perturbed_field(n_quadrature_points, Vector<double>(dim+dim));
         
