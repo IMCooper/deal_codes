@@ -55,7 +55,7 @@ namespace Eddy_Current
     
     namespace IO_Data
     {
-        //        std::string parameter_filename;
+        std::string parameter_filename;
         std::string mesh_filename;
         std::string output_filename;
         std::string output_filetype;
@@ -1433,7 +1433,7 @@ int main (int argc, char* argv[])
     
     ParameterHandler prm;
     ParameterReader param(prm);
-    std::string parameter_filename = "../input_files/cube.prm";
+    IO_Data::parameter_filename = "../input_files/cube.prm";
     
     unsigned int p_order=0;
     if (argc > 0)
@@ -1451,13 +1451,13 @@ int main (int argc, char* argv[])
                 }
                 if (input == "-i")
                 {
-                    parameter_filename = argv[i+1];
+                    IO_Data::parameter_filename = argv[i+1];
                 }
             }
         }
     }
     
-    param.read_parameters(parameter_filename);
+    param.read_parameters(IO_Data::parameter_filename);
     
     deallog.depth_console (0);
     MaxwellProblem<3> maxwell(p_order);
