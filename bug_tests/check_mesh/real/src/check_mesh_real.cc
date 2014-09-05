@@ -400,16 +400,12 @@ void MaxwellProblem<dim>::setup_system ()
     solution.reinit (dof_handler.n_dofs());
     system_rhs.reinit (dof_handler.n_dofs());
     constraints.clear ();
-       
-    DoFTools::make_hanging_node_constraints (dof_handler,
-                                             constraints);
     // FE_Nedelec boundary condition.
     // Real part (begins at 0):
-     VectorTools::project_boundary_values_curl_conforming(dof_handler, 0, exact_solution, 0, constraints);
-//     VectorTools::project_boundary_values_curl_conforming(dof_handler, 0, exact_solution, 1, constraints);
-//     VectorTools::project_boundary_values_curl_conforming(dof_handler, 0, exact_solution, 2, constraints);
+    VectorTools::project_boundary_values_curl_conforming(dof_handler, 0, exact_solution, 0, constraints);
     
-    
+    DoFTools::make_hanging_node_constraints (dof_handler,
+                                             constraints);
     constraints.close ();
     CompressedSparsityPattern c_sparsity(dof_handler.n_dofs());
     DoFTools::make_sparsity_pattern(dof_handler,
@@ -554,9 +550,9 @@ void MaxwellProblem<dim>::output_results_vtk (const unsigned int cycle) const
     std::vector<std::string> solution_names (dim, "E_re");
     std::vector<DataComponentInterpretation::DataComponentInterpretation>
     data_component_interpretation(dim, DataComponentInterpretation::component_is_part_of_vector);
-    data_component_interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
-    data_component_interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
-    data_component_interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
+//     data_component_interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
+//     data_component_interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
+//     data_component_interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
     
     data_out.add_data_vector (solution, solution_names,
                               // new
@@ -600,23 +596,25 @@ void MaxwellProblem<dim>::run ()
 {
     typename Triangulation<dim>::cell_iterator cell,endc; // For querying cells.
     
-    for (unsigned int cycle=0; cycle<3; ++cycle)
+    for (unsigned int cycle=0; cycle<2; ++cycle)
     {
         std::cout << "Cycle " << cycle << ':';
         if (cycle == 0)
         {
             /* Cube mesh */
-//            GridGenerator::hyper_cube (triangulation, -1, 1);
-            /* move one vertex out of position */
-//            cell = triangulation.begin_active(),
-//            endc = triangulation.end();
-//            for (; cell!=endc; ++cell)
-//            {
-//                Point<dim> &v1 = cell->vertex(7);
-//                v1 +=Point<dim> (0.1,0,0);
-//                Point<dim> &v2 = cell->vertex(3);
-//                v2 +=Point<dim> (-0.1,0.2,0.15);
-//            }
+           GridGenerator::hyper_cube (triangulation, -1, 1);
+            /* move one vertex out of position:
+             * (breaks DIRICHLET) 
+             */
+           cell = triangulation.begin_active(),
+           endc = triangulation.end();
+           for (; cell!=endc; ++cell)
+           {
+               Point<dim> &v1 = cell->vertex(7);
+               v1 +=Point<dim> (0.1,0,0);
+               Point<dim> &v2 = cell->vertex(3);
+               v2 +=Point<dim> (-0.1,0.2,0.15);
+           }
 
             /* subdivided Cube mesh */
 //             GridGenerator::subdivided_hyper_cube (triangulation,2,-1.0,1.0);
@@ -630,11 +628,12 @@ void MaxwellProblem<dim>::run ()
             
             
             /* parallelopiped mesh */
-             Point<dim> corners[dim];
-             corners[0]=Point<dim> (1.0,0.0,0.0);
-             corners[1]=Point<dim> (0.5,1.0,0.0);
-             corners[2]=Point<dim> (0.0,0.0,1.0);
-             GridGenerator::parallelepiped(triangulation,corners);
+            /* DIRICHLET stops working here */
+//              Point<dim> corners[dim];
+//              corners[0]=Point<dim> (1.0,0.0,0.0);
+//              corners[1]=Point<dim> (0.5,1.0,0.0);
+//              corners[2]=Point<dim> (0.0,0.0,1.0);
+//              GridGenerator::parallelepiped(triangulation,corners);
 
             
             /* Cylinder mesh */
@@ -643,6 +642,7 @@ void MaxwellProblem<dim>::run ()
 //             triangulation.set_boundary (0, cylinder);
             
             /* Sphere mesh */
+            /* NEUMANN Stops working here */            
 //             GridGenerator::hyper_ball(triangulation,Point<dim>(0.0,0.0,0.0),1.0);
 //             static const HyperBallBoundary<dim> sphere (Point<dim>(0.0,0.0,0.0),1.0);
 //             triangulation.set_boundary(0,sphere);
@@ -658,20 +658,19 @@ void MaxwellProblem<dim>::run ()
 //             read_in_mesh(mesh_name);
 
             /* Set boundaries to neumann (boundary_id = 1) */
-//             typename Triangulation<dim>::cell_iterator
-//             cell = triangulation.begin (),
-//             endc = triangulation.end();
-//             for (; cell!=endc; ++cell)
-//             {
-//               //set bd flag.
-//               for (unsigned int face=0; face<GeometryInfo<dim>::faces_per_cell; ++face)
-//               {
-//                   if (cell->face(face)->at_boundary())
-//                   {
-//                       cell->face(face)->set_all_boundary_indicators (1);
-//                   }
-//               }
-//           }
+            cell = triangulation.begin ();
+            endc = triangulation.end();
+            for (; cell!=endc; ++cell)
+            {
+              //set bd flag.
+              for (unsigned int face=0; face<GeometryInfo<dim>::faces_per_cell; ++face)
+              {
+                  if (cell->face(face)->at_boundary())
+                  {
+                      cell->face(face)->set_all_boundary_indicators (10);
+                  }
+              }
+            }
 
             /* print cell boundary indicators: */
 //             cell = triangulation.begin ();
@@ -691,6 +690,13 @@ void MaxwellProblem<dim>::run ()
 
             /* refine mesh to start */
 //           triangulation.refine_global(2);
+
+            /* Testing hanging nodes */
+            triangulation.refine_global(1);
+            cell = triangulation.begin_active();
+            cell->set_refine_flag(); // create single refined cell
+            triangulation.execute_coarsening_and_refinement();            
+            
         }
         else
         {
