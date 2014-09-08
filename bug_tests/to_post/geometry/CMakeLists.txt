@@ -3,7 +3,7 @@
 ##
 
 # Set the name of the project and target:
-SET(TARGET check_nedelec_parallelepiped)
+SET(TARGET check_nedelec_parallelepiped_inhom_neumann)
 
 # Declare all source files the target consists of:
 SET(TARGET_SRC
