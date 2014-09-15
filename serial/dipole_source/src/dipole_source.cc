@@ -48,15 +48,15 @@
 #include <locale>
 #include <string>
 
-namespace MaxwellProblem
+namespace Maxwell
 {
     using namespace dealii;
     const double constant_PI = numbers::PI;
     
     namespace IO_Data
     {
-        std::string output_filename;
-        std::string output_filetype;
+        std::string output_filename = "solution";
+        std::string output_filetype = "vtk";
     }
     
     //    template <int dim>
@@ -77,15 +77,14 @@ namespace MaxwellProblem
          * This can be adjusted via the parameter file and then
          * use vector.reinit(number_of objects) later on.
          */
-        
-        Vector<double> param_mur(1);
-        Vector<double> param_sigma(1);
-        Vector<double> param_epsilon(1);
-        Vector<double> param_kappa_re(1); // Kappa = Kappa_re + i*Kappa_im = -omega.^2*epr + i*omega*sigma
-        Vector<double> param_kappa_im(1);
+        Vector<double> param_mur;
+        Vector<double> param_sigma;
+        Vector<double> param_epsilon;
+        Vector<double> param_kappa_re; // Kappa = Kappa_re + i*Kappa_im = -omega.^2*epr + i*omega*sigma
+        Vector<double> param_kappa_im;
         
         Point<3> source_point(1.1,1.1,1.1);
-        Tensor<1,3> coil_direction=(1.0,0.0,0.0);
+        Tensor<1,3> coil_direction;
     }
     
     /* ExactSolution class:
@@ -218,8 +217,7 @@ namespace MaxwellProblem
     dof_handler (triangulation),
     // Defined as FESystem, and we need 2 FE_Nedelec - first (0) is real part, second (1) is imaginary part.
     // Then need to use system blocks to solve for them.
-    fe (FE_Nedelec<dim>(order), 1, FE_Nedelec<dim>(order), 1),
-    exact_solution()
+    fe (FE_Nedelec<dim>(order), 1, FE_Nedelec<dim>(order), 1)
     {
         p_order = order;
         quad_order = p_order+2;
@@ -284,10 +282,13 @@ namespace MaxwellProblem
          * i.e. mu is now mur (smallest value is 1)
          *      and kappa must be multiplied by mu_0 in both the real and imaginary parts.
          */
+        EquationData::param_mur.reinit(1);
         EquationData::param_mur(0) = EquationData::param_mu_star;
         
+        EquationData::param_sigma.reinit(1);
         EquationData::param_sigma(0) = EquationData::param_sigma_star;
         
+        EquationData::param_epsilon.reinit(1);
         EquationData::param_epsilon(0) = EquationData::param_epsilon_star;
         
         
@@ -298,9 +299,12 @@ namespace MaxwellProblem
         EquationData::param_kappa_im.reinit(EquationData::param_mur.size());
         for (unsigned int i=0;i<EquationData::param_mur.size();i++) // note mur and kappa must have same size:
         {
-            EquationData::param_kappa_re(i) = -EquationData::param_omega*EquationData::param_omega*EquationData::param_epsilon(i);
-            EquationData::param_kappa_im(i) = EquationData::param_omega*EquationData::param_sigma(i);
+            EquationData::param_kappa_re(i) = 1e-6;//-EquationData::param_omega*EquationData::param_omega*EquationData::param_epsilon(i);
+            EquationData::param_kappa_im(i) = 0.0;//EquationData::param_omega*EquationData::param_sigma(i);
         }
+        EquationData::coil_direction[0]=1.0;
+        EquationData::coil_direction[1]=1.0;
+        EquationData::coil_direction[2]=1.0;
     }
     template <int dim>
     void MaxwellProblem<dim>::assemble_system ()
@@ -410,7 +414,7 @@ namespace MaxwellProblem
                 fe_face_values.reinit (cell, face_number);
                 if (cell->face(face_number)->at_boundary()
                     &&
-                    (cell->face(face_number)->boundary_indicator() == 1))
+                    (cell->face(face_number)->boundary_indicator() == 10))
                 {
                     // Store values of (mur^-1)*curl E:
                     // For this problem, vector value list returns values of H
@@ -515,7 +519,7 @@ namespace MaxwellProblem
         std::vector<DataComponentInterpretation::DataComponentInterpretation>
         get_data_component_interpretation () const;
         virtual UpdateFlags get_needed_update_flags () const;
-    private:
+//    private:
         ExactSolution<dim> exact_solution;
     };
     
@@ -533,19 +537,19 @@ namespace MaxwellProblem
         solution_names.push_back ("E_im");
         solution_names.push_back ("E_im");
         solution_names.push_back ("E_im");
-        solution_names.push_back ("H_re");
-        solution_names.push_back ("H_re");
-        solution_names.push_back ("H_re");
-        solution_names.push_back ("H_im");
-        solution_names.push_back ("H_im");
-        solution_names.push_back ("H_im");
-        
-        solution_names.push_back ("perturbed_diff_re");
-        solution_names.push_back ("perturbed_diff_re");
-        solution_names.push_back ("perturbed_diff_re");
-        solution_names.push_back ("perturbed_diff_im");
-        solution_names.push_back ("perturbed_diff_im");
-        solution_names.push_back ("perturbed_diff_im");
+         solution_names.push_back ("H_re");
+         solution_names.push_back ("H_re");
+         solution_names.push_back ("H_re");
+         solution_names.push_back ("H_im");
+         solution_names.push_back ("H_im");
+         solution_names.push_back ("H_im");
+         
+         solution_names.push_back ("Error_re");
+         solution_names.push_back ("Error_re");
+         solution_names.push_back ("Error_re");
+         solution_names.push_back ("Error_im");
+         solution_names.push_back ("Error_im");
+         solution_names.push_back ("Error_im");
         
         return solution_names;
     }
@@ -560,21 +564,21 @@ namespace MaxwellProblem
         interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
         interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
         interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
-        // for H re/imag:
-        interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
-        interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
-        interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
-        interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
-        interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
-        interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
-        
-        // For perturbed field error:
-        interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
-        interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
-        interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
-        interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
-        interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
-        interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
+        // for curlE re/imag:
+         interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
+         interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
+         interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
+         interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
+         interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
+         interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
+         
+         // For perturbed field error:
+         interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
+         interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
+         interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
+         interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
+         interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
+         interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
         
         return interpretation;
     }
@@ -604,13 +608,12 @@ namespace MaxwellProblem
         for (unsigned int q=0; q<n_quadrature_points; ++q)
         {
             // Electric field, E:
-            for (unsigned int d=0; d<dim; ++d)
+            for (unsigned int d=0; d<dim+dim; ++d)
             {
                 computed_quantities[q](d) = uh[q](d);
-                computed_quantities[q](d+dim) = uh[q](d+dim);
             }
             
-            // Curl of solution:
+            // CurlE:
             //real part:
             computed_quantities[q](0+2*dim) = (duh[q][2][1]-duh[q][1][2]);
             computed_quantities[q](1+2*dim) = (duh[q][0][2]-duh[q][2][0]);
@@ -624,7 +627,7 @@ namespace MaxwellProblem
             for (unsigned int i=0;i<dim+dim;i++)
             {
                 computed_quantities[q](i+4*dim) = uh[q](i)-solution_value_list[q](i);
-            }            
+            }
         }
     }
     
@@ -636,13 +639,15 @@ namespace MaxwellProblem
         std::ostringstream filename;
         filename << IO_Data::output_filename << "-" << cycle << "." << IO_Data::output_filetype;
         std::ofstream output (filename.str().c_str());
+        
+        // postprocessor handles all quantities to output
+        // NOTE IT MUST GO BEFORE DataOut<dim>!!!
+        Postprocessor postprocessor;
+        
         DataOut<dim> data_out;
         data_out.attach_dof_handler (dof_handler);
         
-        
-        Postprocessor postprocessor;
-        
-        data_out.add_data_vector(solution,postprocessor);
+        data_out.add_data_vector(solution, postprocessor);
         data_out.build_patches (quad_order);
         data_out.write_vtk (output);
     }
@@ -651,7 +656,7 @@ namespace MaxwellProblem
     void MaxwellProblem<dim>::run ()
     {
         
-        for (unsigned int cycle=0; cycle<1; ++cycle)
+        for (unsigned int cycle=0; cycle<3; ++cycle)
         {
             std::cout << "Cycle " << cycle << ':' << std::endl;
             if (cycle == 0)
@@ -671,7 +676,7 @@ namespace MaxwellProblem
 //                     {
 //                         if (cell->face(face)->at_boundary())
 //                         {
-//                             cell->face(face)->set_boundary_indicator (1);
+//                             cell->face(face)->set_boundary_indicator (10);
 //                         }
 //                     }
 //                 }
@@ -702,7 +707,7 @@ namespace MaxwellProblem
 
 int main (int argc, char* argv[])
 {
-    using namespace MaxwellProblem;
+    using namespace Maxwell;
     
     
     unsigned int p_order=0;

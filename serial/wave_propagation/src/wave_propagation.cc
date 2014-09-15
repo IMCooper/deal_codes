@@ -645,6 +645,11 @@ void MaxwellProblem<dim>::output_results_vtk (const unsigned int cycle) const
     std::ostringstream filename;
     filename << "solution-" << cycle << ".vtk";
     std::ofstream output (filename.str().c_str());
+    
+    // DataPostprocessor way:
+    // NOTE IT MUST GO BEFORE DataOut<dim>!!!
+    ComputeH postprocessor;
+    
     DataOut<dim> data_out;
     data_out.attach_dof_handler (dof_handler);
     /* old way:
@@ -688,8 +693,7 @@ void MaxwellProblem<dim>::output_results_vtk (const unsigned int cycle) const
 //                              // new
 //                              DataOut<dim>::type_dof_data,
 //                              data_component_interpretation);
-    // DataPostprocessor way:
-    ComputeH postprocessor;
+    
     data_out.add_data_vector(solution,postprocessor);
     
     

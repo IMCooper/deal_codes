@@ -1360,11 +1360,15 @@ namespace Eddy_Current
         std::ostringstream filename;
         filename << IO_Data::output_filename << "-" << cycle << "." << IO_Data::output_filetype;
         std::ofstream output (filename.str().c_str());
+        
+        // postprocessor handles all quantities to output
+        // NOTE IT MUST GO BEFORE DataOut<dim>!!!
+        Postprocessor postprocessor;
+
         DataOut<dim> data_out;
         data_out.attach_dof_handler (dof_handler);
         
         
-        Postprocessor postprocessor;
         
         data_out.add_data_vector(solution,postprocessor);
         data_out.build_patches (quad_order);
