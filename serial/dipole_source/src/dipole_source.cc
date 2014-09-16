@@ -745,7 +745,7 @@ namespace Maxwell
         data_out.attach_dof_handler (dof_handler);
         
         data_out.add_data_vector(solution, postprocessor);
-        data_out.build_patches (quad_order+1);
+        data_out.build_patches (quad_order);
         data_out.write_vtk (output);
     }
     
@@ -757,14 +757,35 @@ namespace Maxwell
         typename Triangulation<dim>::active_cell_iterator cell,endc; // For querying cells.
         
         double dist_tolerance = 2*sqrt(3);
-        
+        double scaling_factor = 0.75;
         unsigned int numcycles = 4;
+        if (p_order > 1)
+        {
+            numcycles=3;
+        }
+        if (p_order > 3)
+        {
+            numcycles=2;
+        }
         if (graded_mesh == 1)
         {
-            numcycles=5;
+            numcycles=6;
+            if (p_order > 1)
+            {
+                numcycles=5;
+            }
+            if (p_order > 2)
+            {
+                numcycles=4;
+            }
+            if (p_order > 3)
+            {
+                numcycles=3;
+            }            
         }
         
-        for (unsigned int cycle=0; cycle<5; ++cycle)
+        
+        for (unsigned int cycle=0; cycle<numcycles; ++cycle)
         {
             std::cout << "Cycle " << cycle << ':' << std::endl;
             if (cycle == 0)
@@ -806,7 +827,7 @@ namespace Maxwell
                         }
                     }
                     triangulation.execute_coarsening_and_refinement ();
-                    dist_tolerance=dist_tolerance*0.5;
+                    dist_tolerance=dist_tolerance*scaling_factor;
                 }
                 else
                 {
