@@ -745,7 +745,7 @@ namespace Maxwell
         data_out.attach_dof_handler (dof_handler);
         
         data_out.add_data_vector(solution, postprocessor);
-        data_out.build_patches (quad_order);
+        data_out.build_patches (quad_order+1);
         data_out.write_vtk (output);
     }
     
