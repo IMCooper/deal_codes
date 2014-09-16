@@ -171,7 +171,7 @@ namespace Maxwell
     class MaxwellProblem
     {
     public:
-        MaxwellProblem (const unsigned int order);
+        MaxwellProblem (const unsigned int order, const unsigned int mesh_flag);
         ~MaxwellProblem ();
         void run ();
         
@@ -182,14 +182,14 @@ namespace Maxwell
         double dotprod(const Tensor<1,dim> &A, const Tensor<1,dim> &B) const;
         double dotprod(const Tensor<1,dim> &A, const Vector<double> &B) const;
         
+//         double calcErrorHcurlNorm(); // removed for now - no curlE value.
+        
         void read_in_mesh (std::string mesh_name);
         void setup_system ();
         void assemble_system ();
         void solve ();
         void process_solution(const unsigned int cycle);
-        void output_results_eps (const unsigned int cycle) const;
         void output_results_vtk (const unsigned int cycle) const;
-        void output_results_gmv(const unsigned int cycle) const;
         class Postprocessor; // If setting up class within this class for DataPostprocessor.
         //void mesh_info(const Triangulation<dim> &tria, const std::string        &filename);
         Triangulation<dim>   triangulation;
@@ -209,10 +209,11 @@ namespace Maxwell
         // Input paramters (for hp-FE)
         unsigned int p_order;
         unsigned int quad_order;
+        unsigned int graded_mesh;
     };
     
     template <int dim>
-    MaxwellProblem<dim>::MaxwellProblem (const unsigned int order)
+    MaxwellProblem<dim>::MaxwellProblem (const unsigned int order, const unsigned int mesh_flag)
     :
     dof_handler (triangulation),
     // Defined as FESystem, and we need 2 FE_Nedelec - first (0) is real part, second (1) is imaginary part.
@@ -221,6 +222,7 @@ namespace Maxwell
     {
         p_order = order;
         quad_order = p_order+2;
+        graded_mesh = mesh_flag;
         
     }
     template <int dim>
@@ -248,6 +250,98 @@ namespace Maxwell
         }
         return return_val;
     }
+    
+//     template<int dim>
+//     double MaxwellProblem<dim>::calcErrorHcurlNorm()
+//     {
+//         QGauss<dim>  quadrature_formula(quad_order);
+//         const unsigned int n_q_points = quadrature_formula.size();
+//      
+//         FEValues<dim> fe_values (fe, quadrature_formula,
+//                               update_values    |  update_gradients |
+//                               update_quadrature_points  |  update_JxW_values);
+//      
+//         // Extractors to real and imaginary parts
+//         const FEValuesExtractors::Vector E_re(0);
+//         const FEValuesExtractors::Vector E_im(dim);
+//      
+//         const unsigned int dofs_per_cell = fe.dofs_per_cell;
+//      
+//         std::vector<types::global_dof_index> local_dof_indices (dofs_per_cell);
+//      
+//         // storage for exact sol:
+//         std::vector<Vector<double> > exactsol(n_q_points, Vector<double>(fe.n_components()));
+//         std::vector<Vector<double> > exactcurlsol(n_q_points, Vector<double>(fe.n_components()));
+//         Tensor<1,dim>  exactsol_re;
+//         Tensor<1,dim>  exactsol_im;
+//         Tensor<1,dim>  exactcurlsol_re;
+//         Tensor<1,dim>  exactcurlsol_im;
+// 
+//         // storage for computed sol:
+//         std::vector<Tensor<1,dim> > sol_re(n_q_points);
+//         std::vector<Tensor<1,dim> > sol_im(n_q_points);
+//         Tensor<1,dim> curlsol_re(n_q_points);
+//         Tensor<1,dim> curlsol_im(n_q_points);
+//      
+//         double h_curl_norm=0.0;
+//      
+//         unsigned int block_index_i;
+//      
+//         typename DoFHandler<dim>::active_cell_iterator
+//         cell = dof_handler.begin_active(),
+//         endc = dof_handler.end();
+//         for (; cell!=endc; ++cell)
+//         {
+//             fe_values.reinit (cell);
+//          
+//             // Store exact values of E and curlE:
+//             exact_solution.vector_value_list(fe_values.get_quadrature_points(), exactsol);
+//             exact_solution.curl_value_list(fe_values.get_quadrature_points(), exactcurlsol);
+// 
+// 
+//             // Store computed values at quad points:
+//             fe_values[E_re].get_function_values(solution, sol_re);
+//             fe_values[E_im].get_function_values(solution, sol_im);
+//          
+//             // Calc values of curlE from fe solution:
+//             cell->get_dof_indices (local_dof_indices);
+//             // Loop over quad points to calculate solution:
+//             for (unsigned int q_point=0; q_point<n_q_points; ++q_point)
+//             {
+//                 // Split exact solution into real/imaginary parts:
+//                 for (unsigned int component=0;component<dim;component++)
+//                 {
+//                     exactsol_re[component] = exactsol[q_point][component];
+//                     exactsol_im[component] = exactsol[q_point][component+dim];
+//                     exactcurlsol_re[component] = exactcurlsol[q_point][component];
+//                     exactcurlsol_im[component] = exactcurlsol[q_point][component+dim];
+//                 }
+//                 // Loop over DoFs to calculate curl of solution @ quad point
+//                 curlsol_re=0.0;
+//                 curlsol_im=0.0;
+//                 for (unsigned int i=0; i<dofs_per_cell; ++i)
+//                 {
+//                     block_index_i = fe.system_to_block_index(i).first;
+//                     // Construct local curl value @ quad point
+//                     if (block_index_i==0)
+//                     {
+//                         curlsol_re += solution(local_dof_indices[i])*fe_values[E_re].curl(i,q_point);
+//                     }
+//                     else if (block_index_i==1)
+//                     {
+//                         curlsol_im += solution(local_dof_indices[i])*fe_values[E_im].curl(i,q_point);
+//                     }
+//                 }
+//                 // Integrate difference at each point:             
+//                 h_curl_norm += ( (exactsol_re-sol_re[q_point])*(exactsol_re-sol_re[q_point])
+//                                 + (exactsol_im-sol_im[q_point])*(exactsol_im-sol_im[q_point])
+//                                 + (exactcurlsol_re-curlsol_re)*(exactcurlsol_re-curlsol_re)
+//                                 + (exactcurlsol_im-curlsol_im)*(exactcurlsol_im-curlsol_im)
+//                                 )*fe_values.JxW(q_point);
+//             }
+//         }
+//         return sqrt(h_curl_norm);
+//     }
         
     template <int dim>
     void MaxwellProblem<dim>::setup_system ()
@@ -487,14 +581,17 @@ namespace Maxwell
                                           VectorTools::L2_norm,
                                           &E_im_mask);
         
-        const double L2_error_re = diff_per_cell_re.l2_norm();
-        const double L2_error_im = diff_per_cell_im.l2_norm();
-        const double L2_error = sqrt(L2_error_re*L2_error_re + L2_error_im*L2_error_im);
+        double L2_error_re = diff_per_cell_re.l2_norm();
+        double L2_error_im = diff_per_cell_im.l2_norm();
+        double L2_error = sqrt(L2_error_re*L2_error_re + L2_error_im*L2_error_im);
         
+//         double Hcurl_error = calcErrorHcurlNorm();
+    
         convergence_table.add_value("cycle", cycle);
         convergence_table.add_value("cells", triangulation.n_active_cells());
         convergence_table.add_value("dofs", dof_handler.n_dofs());
         convergence_table.add_value("L2 Error", L2_error);
+//         convergence_table.add_value("H(curl) Error", Hcurl_error);
     }
     
     // Compute magnetic field class:
@@ -637,7 +734,7 @@ namespace Maxwell
     {
         
         std::ostringstream filename;
-        filename << IO_Data::output_filename << "-" << cycle << "." << IO_Data::output_filetype;
+        filename << IO_Data::output_filename << "_order" << p_order << "_graded" << graded_mesh << "-" << cycle << "." << IO_Data::output_filetype;
         std::ofstream output (filename.str().c_str());
         
         // postprocessor handles all quantities to output
@@ -656,14 +753,19 @@ namespace Maxwell
     void MaxwellProblem<dim>::run ()
     {
         
-        for (unsigned int cycle=0; cycle<3; ++cycle)
+        typename Triangulation<dim>::active_cell_iterator active_cell,active_endc; // For querying active cells. (e.g. mesh refinement)
+        typename Triangulation<dim>::active_cell_iterator cell,endc; // For querying cells.
+        
+        double dist_tolerance = 2*sqrt(3);
+        
+        for (unsigned int cycle=0; cycle<5; ++cycle)
         {
             std::cout << "Cycle " << cycle << ':' << std::endl;
             if (cycle == 0)
             {
                 // Cube mesh
                             GridGenerator::hyper_cube (triangulation, -1, 1);
-                            triangulation.refine_global (1);
+                           // triangulation.refine_global (1);
                 
                 
                 // Set boundaries to neumann (boundary_id = 1)
@@ -683,7 +785,28 @@ namespace Maxwell
                 //             triangulation.refine_global (1);
             }
             else
-                triangulation.refine_global (1);
+            {
+                if (graded_mesh == 1)
+                {
+                    cell=triangulation.begin_active();
+                    endc=triangulation.end();
+                    for (; cell!=endc; ++cell)
+                    {
+                        Point<dim> cell_center = cell->center();
+                        double dist_from_source = cell_center.distance(EquationData::source_point);
+                        if (dist_from_source < dist_tolerance)
+                        {
+                            cell->set_refine_flag();
+                        }
+                    }
+                    triangulation.execute_coarsening_and_refinement ();
+                    dist_tolerance=dist_tolerance*0.5;
+                }
+                else
+                {
+                    triangulation.refine_global (1);
+                }
+            }
             std::cout << "   Number of active cells:       "
             << triangulation.n_active_cells()
             << std::endl;
@@ -691,13 +814,20 @@ namespace Maxwell
             std::cout << "   Number of degrees of freedom: "
             << dof_handler.n_dofs()
             << std::endl;
+
             assemble_system ();
+            
             solve ();
+                
             process_solution (cycle);
             output_results_vtk (cycle);
+            
         }
         convergence_table.set_precision("L2 Error",8);
         convergence_table.set_scientific("L2 Error",true);
+        
+//         convergence_table.set_precision("H(curl) Error",8);
+//         convergence_table.set_scientific("H(curl) Error",true);
         
         convergence_table.write_text(std::cout);
     }
@@ -711,6 +841,7 @@ int main (int argc, char* argv[])
     
     
     unsigned int p_order=0;
+    unsigned int graded_mesh=0;
     if (argc > 0)
     {
         for (int i=1;i<argc;i++)
@@ -724,13 +855,23 @@ int main (int argc, char* argv[])
                     strValue << argv[i+1];
                     strValue >> p_order;
                 }
+                if (input == "-graded")
+                {
+                    std::stringstream strValue;
+                    strValue << argv[i+1];
+                    strValue >> graded_mesh;
+                    if (graded_mesh > 1)
+                    {
+                        graded_mesh=1;
+                    }
+                }
             }
         }
     }
     
         
     deallog.depth_console (0);
-    MaxwellProblem<3> maxwell(p_order);
+    MaxwellProblem<3> maxwell(p_order,graded_mesh);
     maxwell.run ();
     return 0;
 }
