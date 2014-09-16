@@ -758,6 +758,12 @@ namespace Maxwell
         
         double dist_tolerance = 2*sqrt(3);
         
+        unsigned int numcycles = 4;
+        if (graded_mesh == 1)
+        {
+            numcycles=5;
+        }
+        
         for (unsigned int cycle=0; cycle<5; ++cycle)
         {
             std::cout << "Cycle " << cycle << ':' << std::endl;
