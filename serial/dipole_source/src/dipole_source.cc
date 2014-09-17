@@ -758,12 +758,16 @@ namespace Maxwell
         
         double dist_tolerance = 2*sqrt(3);
         double scaling_factor = 0.75;
-        unsigned int numcycles = 4;
+        unsigned int numcycles = 5;
         if (p_order > 1)
+        {
+            numcycles=4;
+        }
+        if (p_order > 3)
         {
             numcycles=3;
         }
-        if (p_order > 3)
+        if (p_order > 4)
         {
             numcycles=2;
         }
